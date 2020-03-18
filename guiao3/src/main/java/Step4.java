@@ -6,6 +6,8 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 import java.io.IOException;
 
+import static org.apache.hadoop.hbase.util.Bytes.toBytes;
+
 public class Step4 {
     public static void main(String[] args) throws IOException {
         Configuration conf = HBaseConfiguration.create();
@@ -13,36 +15,43 @@ public class Step4 {
 
         Table ht = conn.getTable(TableName.valueOf("actor"));
 
-        Scan s = new Scan();
-        int i = 0;
-        for(Result r: ht.getScanner(s)) {
-            // actor
-            String key = Bytes.toString(r.getRow());
-            String[] keyParts = key.split("&");
+        //Exemplo de visualização da página no ator com id 9
+        Get g = new Get(toBytes(2));
+        Result r = ht.get(g);
+        System.out.println(r);
 
-            System.out.println("actor: " + keyParts[0]);
+        String name = Bytes.toString(r.getValue(Bytes.toBytes("info"), Bytes.toBytes("name")));
+        System.out.println("Name: " + name);
 
-            byte [] value1 = r.getValue(Bytes.toBytes("dates"), Bytes.toBytes("b"));
-            String str = Bytes.toString(value1);
-            System.out.println("Birth date with b == " + keyParts[1] + " : " + str);
+        String bdate = Bytes.toString(r.getValue(Bytes.toBytes("info"), Bytes.toBytes("birth")));
+        System.out.println("Birth date: " + bdate);
 
-            value1 = r.getValue(Bytes.toBytes("dates"), Bytes.toBytes("d"));
-            str = Bytes.toString(value1);
-            System.out.println("Birth date with d == " + keyParts[2] + " : " + str);
+        String ddate = Bytes.toString(r.getValue(Bytes.toBytes("info"), Bytes.toBytes("death")));
+        if(ddate.equals("none"))
+            System.out.println("Death date: Still alive!");
+        else
+            System.out.println("Death date: " + ddate);
 
-            value1 = r.getValue(Bytes.toBytes("nmovies"), Bytes.toBytes("nm"));
-            str = Bytes.toString(value1);
-            System.out.println("Birth date with nm == " + keyParts[3] + " : " + str);
+        String movies = Bytes.toString(r.getValue(Bytes.toBytes("info"), Bytes.toBytes("mrank")));
+        String[] moviesByRank = movies.split("%");
 
-            value1 = r.getValue(Bytes.toBytes("top3"), Bytes.toBytes("t"));
-            str = Bytes.toString(value1);
-            System.out.println("Birth date with t == " + keyParts[4] + " : " + str);
-
-            value1 = r.getValue(Bytes.toBytes("collab"), Bytes.toBytes("c"));
-            str = Bytes.toString(value1);
-            System.out.println("Birth date with c == " + keyParts[5] + " : " + str);
-
+        System.out.println("Movie Rank");
+        int i = 1;
+        for(String s : moviesByRank){
+            System.out.println("Rank " + i + " : " + s);
+            i++;
         }
+
+        String c = Bytes.toString(r.getValue(Bytes.toBytes("info"), Bytes.toBytes("collab")));
+        String[] collabs = c.split("%");
+
+        System.out.println("Collaborators");
+        for(String s : collabs){
+            System.out.println("Rank " + i + " : " + s);
+            i++;
+        }
+
+
         ht.close();
         conn.close();
     }
