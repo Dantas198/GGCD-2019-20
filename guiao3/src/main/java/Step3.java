@@ -15,7 +15,6 @@ public class Step3 {
         // criar tabela
         Admin admin = conn.getAdmin();
         HTableDescriptor t = new HTableDescriptor(TableName.valueOf("actor"));
-        t.addFamily(new HColumnDescriptor("name"));
         t.addFamily(new HColumnDescriptor("dates"));
         t.addFamily(new HColumnDescriptor("nmovies"));
         t.addFamily(new HColumnDescriptor("top3"));
@@ -43,7 +42,6 @@ public class Step3 {
 
             Put put = new Put(rowKey);
 
-            put.addColumn(Bytes.toBytes("name"), Bytes.toBytes("n"), Bytes.toBytes(0L));
             put.addColumn(Bytes.toBytes("dates"), Bytes.toBytes("b"), Bytes.toBytes(0L));
             put.addColumn(Bytes.toBytes("dates"), Bytes.toBytes("d"), Bytes.toBytes(0L));
             put.addColumn(Bytes.toBytes("nmovies"), Bytes.toBytes("nm"), Bytes.toBytes(0L));
