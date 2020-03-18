@@ -33,6 +33,8 @@ public class VisualizeStep1 {
             if(i == 10) {
                 System.out.println("Score: " + tscore/tvotes);
                 i = 0;
+                tscore = tvotes = 0;
+
             }
         }
         ht.close();
