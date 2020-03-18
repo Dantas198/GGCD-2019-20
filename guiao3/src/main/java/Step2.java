@@ -36,7 +36,7 @@ public class Step2 {
             castVote(i, randVote);
             long durationIter = System.nanoTime() - startTimeIter;
 
-            System.out.println("The duration of vote number " + i + "is: " + durationIter/1000000000 + " in seconds");
+            System.out.println("The duration of vote number " + i + " is: " + durationIter/1000000000 + " in seconds");
             duration += durationIter;
         }
 
