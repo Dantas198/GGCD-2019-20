@@ -1,0 +1,16 @@
+8f30207e-7a95-4384-ae3e-ef1e8c35b26f
+
+No exercício 1 seria continua a ser melhor ter uma chave composta devido aos votos? Tendo que ter apenas um caso 
+especial para guardar as restantes informações de cada filme (chave a juntar: filme+0), em comparação com o guião 3.
+
+Como carregar os dados paralelamente ? A nossa resolução demorou muito tempo a executar existe algum problema nela
+que leve a isso?
+
+
+No exercício 2 é suposto fazer cálculos auxiliares, como o top 3, os colaboradores e total numero de filmes para cada
+ator e ir colocando essas informações na tabela de informações gerais de ator, ou ter uma tabela específica para cada
+operação dessas e uma para as informações básicas e depois quando queremos a página do autor vamos buscar informações a 
+cada uma das tabelas?
+
+Qual é a melhor forma para fazer a parte dos colaboradores? A forma como temos a informação é análoga a ter 3 tabelas 
+numa bd formando uma relação N para N. Temos de dar join dos 3 ficheiros, name.basics, title.basics e title.principals? 
