@@ -26,10 +26,6 @@ import java.io.IOException;
 
 public class DB {
 
-
-
-
-
     public static class MyMapper extends Mapper<LongWritable, Text, ImmutableBytesWritable, Put> {
         @Override
         protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {

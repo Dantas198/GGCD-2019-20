@@ -20,6 +20,7 @@ public class Main {
         this.sc = sc;
     }
 
+    // função que retorna um JavaPairRDD genérico aplicável a muitos casos básicos de mapeamento dos ficheiros originais
     public <K, V> JavaPairRDD<K, V> genericMapOperation(String inputFile, Function<String[],Boolean> f1, PairFunction<String[],K,V> f2){
         return sc.textFile(inputFile)
                 .map(l -> l.split("\\t"))
@@ -27,7 +28,11 @@ public class Main {
                 .mapToPair(f2);
     }
 
+    // JavaPairRDD para o cálculo do top3. Adicionalmente cria o objeto Actor que também contém o número de filmes total em que participou
+    // @param infosByMovieID - RDD que contém um mapeamento de ID de filme para um tuplo de informação do ator (obtido do title.principals)
+    // e informação adicional do filme
     public JavaPairRDD<Actor, List<MovieInfo>> top3Movies(JavaPairRDD<String, Tuple2<ActorKey, MovieInfo>> infosByMovieId){
+        // Chave passa a ser ActorKey
         return infosByMovieId.mapToPair(l -> new Tuple2<>(l._2._1, l._2._2))
                 .groupByKey()
                 .mapToPair(l -> {
@@ -43,6 +48,7 @@ public class Main {
                 .cache();
     }
 
+    // JavaPairRDD para o cálculo dos colaboradores
     public JavaPairRDD<ActorKey, Iterable<Tuple2<ActorKey, MovieInfo>>> collaborators(JavaPairRDD<String, Tuple2<ActorKey, MovieInfo>> infosByMovieId){
         return infosByMovieId.groupByKey()
                 .flatMapToPair(l -> {
@@ -57,6 +63,7 @@ public class Main {
                 .groupByKey();
     }
 
+    // JavaPairRDD para a ordenação de atores por contagem de filmes em que participou cada um
     public JavaPairRDD<String, Integer> sortActorsByMovieCount(JavaPairRDD<Actor, List<MovieInfo>> moviesByActor){
         return moviesByActor.sortByKey(false)
                 .mapToPair(p -> new Tuple2<>(p._1.actorKey.actorName, p._1.numMovies))
@@ -92,7 +99,8 @@ public class Main {
                 l -> new Tuple2<>(l[0], Float.parseFloat(l[1])));
 
 
-        // (MovieId, MovieInfo) with leftOuterJoin
+        // (MovieId, MovieInfo) with leftOuterJoin to include missing ratings values so that it functions
+        // properly with movieCount on top3
         JavaPairRDD<String, MovieInfo> moviesInfo = moviesTitles.leftOuterJoin(moviesRating)
                 .mapToPair(l -> new Tuple2<>(l._1, new MovieInfo(l._2._1, l._2._2)));
 
