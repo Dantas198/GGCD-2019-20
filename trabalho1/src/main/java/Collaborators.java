@@ -21,16 +21,6 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 public class Collaborators {
-/*
-    public static class FirstPartitioner extends Partitioner<Actor, > {
-        @Override
-        public int getPartition(IntPair key, NullWritable value, int numPartitions) {
-            // multiply by 127 to perform some mixing
-            return Math.abs(key.getFirst() * 127) % numPartitions;
-        }
-    }
-
-*/
     public static class MovieInfoActorMapper extends Mapper<LongWritable, Text, Text, TextPair> {
         @Override
         protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {

@@ -34,7 +34,7 @@ public class ActorsTop3 {
     public static class JoinTitleMapper extends TableMapper<Text,TextPair> {
         @Override
         protected void map(ImmutableBytesWritable key, Result value, Context context) throws IOException, InterruptedException {
-            byte[] name = value.getValue(Bytes.toBytes("info"), Bytes.toBytes("primaryTitle"));
+            byte[] name = value.getValue(Bytes.toBytes("info"), Bytes.toBytes("pt"));
             context.write(new Text(value.getRow()), new TextPair(new Text("left"), new Text(name)));
         }
     }
@@ -71,7 +71,6 @@ public class ActorsTop3 {
         protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
             if (key.get() !=  0){
                 String[] words = value.toString().split("\\t");
-                //System.out.println(Arrays.toString(words));
                 if(words[3].equals("actor") || words[3].equals("actress") || words[3].equals("self"))
                     context.write(new Text(words[0]), new TextPair(new Text("left"), new Text(words[2])));
             }
@@ -140,17 +139,16 @@ public class ActorsTop3 {
     }
 
 
-    public static class MyMapperTop3SS extends Mapper<LongWritable, Text, TextFloatPair, Text>{
+    public static class MyMapperTop3WithSS extends Mapper<LongWritable, Text, TextFloatPair, Text>{
         @Override
         protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
             String[] fields = value.toString().split("\\t");
-            System.out.println(Arrays.toString(fields));
             context.write(new TextFloatPair(new Text(fields[0]), new FloatWritable(Float.parseFloat(fields[3]))), new Text(fields[2]));
         }
     }
 
     // if we want the rating then Text -> TextFloatPair
-    public static class MyReducerTop3SS extends TableReducer<TextFloatPair, Text, ImmutableBytesWritable>{
+    public static class MyReducerTop3WithSS extends TableReducer<TextFloatPair, Text, ImmutableBytesWritable>{
         @Override
         protected void reduce(TextFloatPair key, Iterable<Text> value, Context context) throws IOException, InterruptedException {
             byte[] row = Bytes.toBytes(key.first.toString());
@@ -158,7 +156,7 @@ public class ActorsTop3 {
             int i = 0;
             for(Text movie : value){
                 if(i<3)
-                    put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("r" + i + 1), Bytes.toBytes(movie.toString()));
+                    put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("r" + (i + 1)), Bytes.toBytes(movie.toString()));
                 i++;
             }
             put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("c"),Bytes.toBytes(i));
@@ -166,19 +164,45 @@ public class ActorsTop3 {
         }
     }
 
-    // ----- top 3 with local sort -----------
+    // ----- top 3 with local sort with count -----------
 
 
     public static class MyMapperTop3 extends Mapper<LongWritable, Text, Text, TextFloatPair>{
         @Override
         protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
             String[] fields = value.toString().split("\\t");
-            System.out.println(Arrays.toString(fields));
             context.write(new Text(fields[0]), new TextFloatPair(new Text(fields[2]), new FloatWritable(Float.parseFloat(fields[3]))));
         }
     }
 
     public static class MyReducerTop3 extends TableReducer<Text, TextFloatPair, ImmutableBytesWritable>{
+        @Override
+        protected void reduce(Text key, Iterable<TextFloatPair> values, Context context) throws IOException, InterruptedException {
+            Stream<TextFloatPair> s = StreamSupport.stream(values.spliterator(), true)
+                    .sorted((a, b) -> {
+                        FloatWritable x = a.second;
+                        FloatWritable y = b.second;
+                        return Float.compare(y.get(), x.get());
+                    });
+            List<TextFloatPair> list = s.collect(Collectors.toList());
+            byte[] row = Bytes.toBytes(key.toString());
+            Put put = new Put(row);
+            if(list.size() > 3)
+                list = new ArrayList<>(list.subList(0, 2));
+
+            int i = 1;
+            for(TextFloatPair p : list){
+                if(i == 1 && Float.compare(0, p.second.get()) == 0)
+                    break;
+                put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("r" + i), Bytes.toBytes(p.first + "%" + p.second));
+                i++;
+            }
+            if(i>1)
+                context.write(null, put);
+        }
+    }
+
+    public static class MyReducerTop3WithCount extends TableReducer<Text, TextFloatPair, ImmutableBytesWritable>{
         @Override
         protected void reduce(Text key, Iterable<TextFloatPair> values, Context context) throws IOException, InterruptedException {
             Stream<TextFloatPair> s = StreamSupport.stream(values.spliterator(), true)
@@ -211,8 +235,8 @@ public class ActorsTop3 {
         job.setJarByClass(ActorsTop3.class);
 
         Scan scan = new Scan();
-        scan.setCaching(500);        // 1 is the default in Scan, which will be bad for MapReduce jobs
-        scan.setCacheBlocks(false);  // don't set to true for MR jobs
+        scan.setCaching(500);
+        scan.setCacheBlocks(false);
         scan.addFamily(Bytes.toBytes("info"));
 
         TableMapReduceUtil.initTableMapperJob(tableName, scan, JoinTitleMapper.class, Text.class, TextPair.class, job);
@@ -223,9 +247,6 @@ public class ActorsTop3 {
                 TextInputFormat.class, JoinRatingMapper.class);
 
         job.setReducerClass(JoinMovieInfoReducer.class);
-
-        //job.setMapOutputKeyClass(Text.class);
-        //job.setMapOutputValueClass(utils.TextPair.class);
 
         FileOutputFormat.setOutputPath(job, new Path(output));
 
@@ -255,17 +276,45 @@ public class ActorsTop3 {
     }
 
     public static void executeTop3Job(Configuration conf, String name, String input, String output) throws IOException, ClassNotFoundException, InterruptedException {
+        executeTop3(conf, MyReducerTop3.class, name, input, output);
+    }
+
+    public static void executeTop3WithCountJob(Configuration conf, String name, String input, String output) throws IOException, ClassNotFoundException, InterruptedException {
+        executeTop3(conf, MyReducerTop3WithSS.class, name, input, output);
+    }
+
+    public static void executeTop3(Configuration conf, Class<? extends TableReducer> reducer, String name, String input, String output) throws IOException, ClassNotFoundException, InterruptedException {
         Job job = Job.getInstance(conf, name);
         job.setJarByClass(ActorsTop3.class);
         job.setMapperClass(MyMapperTop3.class);
-        job.setReducerClass(MyReducerTop3.class);
+        job.setReducerClass(MyReducerTop3WithCount.class);
 
         job.setMapOutputKeyClass(Text.class);
         job.setMapOutputValueClass(TextFloatPair.class);
         job.setInputFormatClass(TextInputFormat.class);
         TextInputFormat.setInputPaths(job, input);
 
-        TableMapReduceUtil.initTableReducerJob(output, MyReducerTop3.class, job);
+        TableMapReduceUtil.initTableReducerJob(output, reducer, job);
+        job.setNumReduceTasks(1);
+
+        job.waitForCompletion(true);
+    }
+
+    public static void executeTop3WithSecundarySortJob(Configuration conf, String name, String input, String output) throws IOException, ClassNotFoundException, InterruptedException {
+        Job job = Job.getInstance(conf, name);
+        job.setJarByClass(ActorsTop3.class);
+        job.setMapperClass(MyMapperTop3WithSS.class);
+        job.setPartitionerClass(FirstPartitioner.class);
+        job.setSortComparatorClass(KeyComparator.class);
+        job.setGroupingComparatorClass(GroupComparator.class);
+        job.setReducerClass(MyReducerTop3WithSS.class);
+
+        job.setMapOutputKeyClass(TextFloatPair.class);
+        job.setMapOutputValueClass(Text.class);
+        job.setInputFormatClass(TextInputFormat.class);
+        TextInputFormat.setInputPaths(job, input);
+
+        TableMapReduceUtil.initTableReducerJob(output, MyReducerTop3WithSS.class, job);
         job.setNumReduceTasks(1);
 
         job.waitForCompletion(true);

@@ -42,7 +42,7 @@ public class MovieCount {
         }
     }
 
-    public static void executeJob(Configuration conf, String name, String input, String output) throws IOException, ClassNotFoundException, InterruptedException {
+    public static void executeMovieCountJob(Configuration conf, String name, String input, String output) throws IOException, ClassNotFoundException, InterruptedException {
         Job job = Job.getInstance(conf, name);
         job.setJarByClass(MovieCount.class);
         job.setMapperClass(MyMapper.class);
