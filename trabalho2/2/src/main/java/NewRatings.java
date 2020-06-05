@@ -1,5 +1,6 @@
 /**
- * Este codigo resolve a questão 2.C
+ * Este codigo resolve a questão 2.C:
+ * Ratings:Atualize o ficheirotitle.ratings.tsvtendo em conta o seu conteúdo ante-rior e os novos votos recebidos até ao momento.
  */
 
 import org.apache.spark.SparkConf;
